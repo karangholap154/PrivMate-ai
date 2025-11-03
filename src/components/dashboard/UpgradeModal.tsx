@@ -14,7 +14,7 @@ type UpgradeModalProps = {
 };
 
 export const UpgradeModal = ({ open, onOpenChange }: UpgradeModalProps) => {
-  const LEMON_SQUEEZY_CHECKOUT_URL = "https://studymateai.lemonsqueezy.com/checkout";
+  const LEMON_SQUEEZY_CHECKOUT_URL = "https://privmate.lemonsqueezy.com/buy/e4ef55b9-2654-464f-b3eb-713550902e25";
 
   const proFeatures = [
     "Unlimited AI answers",
@@ -43,7 +43,7 @@ export const UpgradeModal = ({ open, onOpenChange }: UpgradeModalProps) => {
 
         <div className="space-y-6 py-4">
           <div className="text-center">
-            <p className="text-3xl font-bold">$5<span className="text-lg font-normal text-muted-foreground">/month</span></p>
+            <p className="text-3xl font-bold">₹400<span className="text-lg font-normal text-muted-foreground">/month</span></p>
           </div>
 
           <div className="space-y-3">
