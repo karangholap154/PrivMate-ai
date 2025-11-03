@@ -137,7 +137,7 @@ const Index = () => {
               <span className="font-semibold">PrivMate AI</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2024 PrivMate AI. All rights reserved.
+              © 2025 PrivMate AI. All rights reserved.
             </p>
           </div>
         </div>
