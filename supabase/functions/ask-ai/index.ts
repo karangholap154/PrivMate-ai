@@ -100,6 +100,96 @@ serve(async (req) => {
     const aiData = await response.json();
     const answer = aiData.choices?.[0]?.message?.content ?? '';
 
+    // Update streak logic
+    const today = new Date().toISOString().split("T")[0];
+    
+    // Get current profile
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("streak_days, last_answer_date")
+      .eq("id", user.id)
+      .single();
+
+    let newStreakDays = 1;
+    let streakMaintained = false;
+    let streakReset = false;
+    let newMilestone = null;
+
+    if (profile) {
+      const lastAnswerDate = profile.last_answer_date;
+      
+      if (lastAnswerDate) {
+        const lastDate = new Date(lastAnswerDate);
+        const todayDate = new Date(today);
+        const diffDays = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) {
+          // Same day, don't update streak
+          newStreakDays = profile.streak_days;
+        } else if (diffDays === 1) {
+          // Yesterday, increment streak
+          newStreakDays = profile.streak_days + 1;
+          streakMaintained = true;
+        } else {
+          // Gap > 1 day, reset streak
+          newStreakDays = 1;
+          streakReset = true;
+        }
+      }
+
+      // Check for milestone achievements
+      const milestoneMap: Record<number, string> = {
+        7: "7_days",
+        15: "15_days",
+        30: "30_days",
+        60: "60_days",
+        90: "90_days",
+      };
+
+      const rewardNames: Record<number, string> = {
+        7: "Focused Learner",
+        15: "Smart Achiever",
+        30: "Exam Hero",
+        60: "Knowledge Master",
+        90: "Learning Legend",
+      };
+
+      if (milestoneMap[newStreakDays]) {
+        // Check if reward already exists
+        const { data: existingReward } = await supabase
+          .from("rewards")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("milestone", milestoneMap[newStreakDays])
+          .maybeSingle();
+
+        if (!existingReward) {
+          // Insert new reward
+          await supabase
+            .from("rewards")
+            .insert({
+              user_id: user.id,
+              milestone: milestoneMap[newStreakDays],
+              reward_name: rewardNames[newStreakDays],
+            });
+          
+          newMilestone = {
+            days: newStreakDays,
+            reward: rewardNames[newStreakDays],
+          };
+        }
+      }
+
+      // Update profile streak
+      await supabase
+        .from("profiles")
+        .update({
+          streak_days: newStreakDays,
+          last_answer_date: today,
+        })
+        .eq("id", user.id);
+    }
+
     // Save answer to database
     const { error: insertError } = await supabase
       .from('answers')
@@ -115,7 +205,15 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ answer }),
+      JSON.stringify({ 
+        answer,
+        streakInfo: {
+          streakDays: newStreakDays,
+          streakMaintained,
+          streakReset,
+          newMilestone,
+        }
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

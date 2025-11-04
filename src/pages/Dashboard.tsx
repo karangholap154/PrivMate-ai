@@ -7,6 +7,9 @@ import { Sidebar } from "@/components/dashboard/Sidebar";
 import { ChatArea } from "@/components/dashboard/ChatArea";
 import { UpgradeModal } from "@/components/dashboard/UpgradeModal";
 import { Header } from "@/components/dashboard/Header";
+import { StreakWidget } from "@/components/dashboard/StreakWidget";
+import { RewardsSection } from "@/components/dashboard/RewardsSection";
+import { RewardModal } from "@/components/dashboard/RewardModal";
 
 export type UserProfile = {
   id: string;
@@ -30,6 +33,9 @@ const Dashboard = () => {
   const [dailyAnswers, setDailyAnswers] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showRewardModal, setShowRewardModal] = useState(false);
+  const [currentMilestone, setCurrentMilestone] = useState<{ days: number; reward: string } | null>(null);
+  const [showRewardsSection, setShowRewardsSection] = useState(false);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -146,23 +152,78 @@ const Dashboard = () => {
           plan={profile.plan}
         />
         
-        <ChatArea
-          messages={messages}
-          setMessages={setMessages}
-          userId={user.id}
-          canAskQuestion={canAskQuestion}
-          dailyAnswers={dailyAnswers}
-          onLimitReached={() => setShowUpgradeModal(true)}
-          onAnswerSuccess={() => {
-            setDailyAnswers(dailyAnswers + 1);
-            loadUserProfile(user.id);
-          }}
-        />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="flex items-center justify-between gap-4 max-w-4xl mx-auto">
+              <StreakWidget streakDays={profile.streak_days} />
+              <button
+                onClick={() => setShowRewardsSection(!showRewardsSection)}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showRewardsSection ? "Hide Rewards" : "View Rewards"}
+              </button>
+            </div>
+          </div>
+
+          {showRewardsSection ? (
+            <div className="flex-1 overflow-auto p-4">
+              <div className="max-w-4xl mx-auto">
+                <RewardsSection userId={user.id} currentStreak={profile.streak_days} />
+              </div>
+            </div>
+          ) : (
+            <ChatArea
+              messages={messages}
+              setMessages={setMessages}
+              userId={user.id}
+              canAskQuestion={canAskQuestion}
+              dailyAnswers={dailyAnswers}
+              onLimitReached={() => setShowUpgradeModal(true)}
+              onAnswerSuccess={async () => {
+                setDailyAnswers(dailyAnswers + 1);
+                
+                // Fetch the latest streak info to check for milestones
+                const { data: updatedProfile } = await supabase
+                  .from("profiles")
+                  .select("streak_days")
+                  .eq("id", user.id)
+                  .single();
+
+                if (updatedProfile) {
+                  // Check if a new milestone was reached
+                  const milestoneMap: Record<number, string> = {
+                    7: "Focused Learner",
+                    15: "Smart Achiever",
+                    30: "Exam Hero",
+                    60: "Knowledge Master",
+                    90: "Learning Legend",
+                  };
+
+                  if (milestoneMap[updatedProfile.streak_days]) {
+                    setCurrentMilestone({
+                      days: updatedProfile.streak_days,
+                      reward: milestoneMap[updatedProfile.streak_days],
+                    });
+                    setShowRewardModal(true);
+                  }
+                }
+                
+                loadUserProfile(user.id);
+              }}
+            />
+          )}
+        </div>
       </div>
 
       <UpgradeModal 
         open={showUpgradeModal} 
         onOpenChange={setShowUpgradeModal}
+      />
+
+      <RewardModal
+        open={showRewardModal}
+        onOpenChange={setShowRewardModal}
+        milestone={currentMilestone}
       />
     </div>
   );

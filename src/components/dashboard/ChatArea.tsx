@@ -75,10 +75,23 @@ export const ChatArea = ({
       setMessages([...messages, userMessage, assistantMessage]);
       onAnswerSuccess();
 
-      toast({
-        title: "Answer received!",
-        description: `${3 - (dailyAnswers + 1)} answers remaining today`,
-      });
+      // Show streak notifications
+      const streakInfo = data.streakInfo;
+      if (streakInfo) {
+        if (streakInfo.newMilestone) {
+          // Milestone achievement will be shown by parent component
+        } else if (streakInfo.streakMaintained) {
+          toast({
+            title: "🔥 Streak maintained!",
+            description: `You're on a ${streakInfo.streakDays}-day streak. Keep it up!`,
+          });
+        } else if (streakInfo.streakReset) {
+          toast({
+            title: "⚡ Let's start again today!",
+            description: "Your streak has been reset. Time to build a new one!",
+          });
+        }
+      }
     } catch (error: any) {
       console.error("Error getting answer:", error);
       toast({
